@@ -54,35 +54,50 @@ export default class Character extends MovableObject {
 
   animate() {
     setInterval(() => {
-      if (this.world.keyboard.RIGHT || this.world.keyboard.LEFT) {
-        this.moveCharacter();
-        this.animationCounter++;
-        if (this.animationCounter % 6 === 0) {
-          this.playAnimation(this.IMAGES_RUNNING);
-        }
-      } else {
-        this.animationCounter = 0;
-        this.currentImg = 0;
-        this.img.src = this.IMAGES_WALKING[0];
-      }
+      const isJumpPressed = this.world.keyboard.SPACE || this.world.keyboard.UP;
+      const isMovingHorizontally = this.world.keyboard.RIGHT || this.world.keyboard.LEFT;
+      const isAirborne = this.isAboveGround();
+
+      this.getCharacterState(isMovingHorizontally, isJumpPressed, isAirborne);
+      this.getAnimationState(isMovingHorizontally, isJumpPressed, isAirborne);
+
     }, 1000 / 60);
   }
 
-  playAnimation(images) {
-    const i = this.currentImg % images.length;
-    const path = images[i];
-    this.img.src = path;
-    this.currentImg++;
+  getCharacterState(isMovingHorizontally, isJumpPressed, isAirborne) {
+      if (!isAirborne && isJumpPressed) {
+        this.jump(25);
+      }
+
+      if (this.world.keyboard.DOWN && this.isAboveGround()) {
+        this.jump(-25);
+      }
+
+      if (this.world.keyboard.DOWN && !this.isAboveGround()) {
+          this.resetPositionY(320);
+      }
+
+      if (isMovingHorizontally) {
+        this.moveCharacter();
+      }
+  }
+
+  getAnimationState(isMovingHorizontally, isJumpPressed, isAirborne) {
+      if (this.isAboveGround()) {
+        this.initiateAnimation(10, this.IMAGES_JUMPING);
+      } else if (isMovingHorizontally) {
+        this.initiateAnimation(6, this.IMAGES_RUNNING);
+      } else {
+        this.stopAnimation();
+      }
   }
 
   moveCharacter() {
     if (this.world.keyboard.RIGHT && this.x < this.world.level.levelEndX) {
-      this.x += this.speed;
-      this.otherDirection = false;
+      this.moveRight();
     }
     if (this.world.keyboard.LEFT && this.x >= 80 ) {
-      this.x -= this.speed;
-        this.otherDirection = true;
+      this.moveLeft();
     }
   }
 }

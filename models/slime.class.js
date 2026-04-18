@@ -4,19 +4,26 @@ export default class Slime extends MovableObject {
 
     IMAGES_WALKING = [
         "img/enemies/blue_slime/Walk1.png",
-        "img/enemies/blue_slime/Walk2.png"
+        "img/enemies/blue_slime/Walk2.png",
+        "img/enemies/blue_slime/Walk3.png",
+        "img/enemies/blue_slime/Walk4.png",
+        "img/enemies/blue_slime/Walk5.png",
+        "img/enemies/blue_slime/Walk6.png",
+        "img/enemies/blue_slime/Walk7.png",
+        "img/enemies/blue_slime/Walk8.png",
     ];
 
     currentImg = 0;
+  animationCounter = 0;
 
     
     constructor() {
         super();
-        this.loadImage("img/enemies/blue_slime/walk1.png");
+        this.loadImage("img/enemies/blue_slime/Walk1.png");
         this.x = Math.random() * 350 + 350;
-        this.y = 280;
+        this.y = 370;
         this.width = 50;
-        this.height = 130;
+        this.height = 40;
         this.speed = 0.15 + Math.random() * 0.25; 
         this.loadImages(this.IMAGES_WALKING);
 
@@ -24,13 +31,10 @@ export default class Slime extends MovableObject {
     }
 
     animate() {
-        this.moveLeft();
-
         setInterval(() => {
-            const i = this.currentImg % this.IMAGES_WALKING.length;
-            const path = this.IMAGES_WALKING[i];
-            this.img.src = path;
-            this.currentImg++;
-        }, 440);
+            this.moveLeft();
+            this.initiateAnimation(14, this.IMAGES_WALKING);
+        }, 1000 / 60);
+
     }
 }
