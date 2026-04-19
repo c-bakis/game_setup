@@ -3,38 +3,83 @@ import MovableObject from "./movable-object.class.js";
 export default class Slime extends MovableObject {
     damage = 10;
 
-    IMAGES_WALKING = [
-        "img/enemies/blue_slime/walk1.png",
-        "img/enemies/blue_slime/walk2.png",
-        "img/enemies/blue_slime/walk3.png",
-        "img/enemies/blue_slime/walk4.png",
-        "img/enemies/blue_slime/walk5.png",
-        "img/enemies/blue_slime/walk6.png",
-        "img/enemies/blue_slime/walk7.png",
-        "img/enemies/blue_slime/walk8.png",
-    ];
+    SPRITE_ANIMATIONS = {
+        WALK: {
+            path: "img/enemies/blue_slime/walk.png",
+            frameWidth: 128,
+            frameHeight: 128,
+            frameCount: 8,
+        },
+    };
 
-    currentImg = 0;
+    activeAnimation = "WALK";
     animationCounter = 0;
 
     
     constructor() {
         super();
-        this.loadImage("img/enemies/blue_slime/walk1.png");
         this.x = Math.random() * 350 + 350;
-        this.y = 370;
-        this.width = 50;
-        this.height = 40;
+        this.y = 270;
+        this.width = 130;
+        this.height = 140;
+        this.hitboxOffsetX = 35;
+        this.hitboxOffsetY = 110;
+        this.hitboxWidth = 50;
+        this.hitboxHeight = 35;
         this.speed = 0.15 + Math.random() * 0.25; 
-        this.loadImages(this.IMAGES_WALKING);
+        const animationPaths = Object.values(this.SPRITE_ANIMATIONS).map(
+            (config) => config.path,
+        );
+        this.loadImages(animationPaths);
+        this.switchAnimation("WALK");
 
         this.animate();
+    }
+
+    switchAnimation(name) {
+        if (this.activeAnimation === name && this.spriteSheet) {
+            return;
+        }
+
+        const config = this.SPRITE_ANIMATIONS[name];
+        if (!config) {
+            return;
+        }
+
+        this.activeAnimation = name;
+        this.animationCounter = 0;
+        this.spriteSheet = {
+            frameWidth: config.frameWidth,
+            frameHeight: config.frameHeight,
+            frameCount: config.frameCount,
+            currentFrame: 0,
+        };
+        this.img = this.imgCache[config.path];
+
+        if (!this.img) {
+            this.loadImage(config.path);
+        }
+    }
+
+    advanceSpriteAnimation(speed) {
+        if (!this.spriteSheet) {
+            return;
+        }
+
+        this.animationCounter++;
+        if (this.animationCounter % speed !== 0) {
+            return;
+        }
+
+        this.spriteSheet.currentFrame =
+            (this.spriteSheet.currentFrame + 1) % this.spriteSheet.frameCount;
     }
 
     animate() {
         setInterval(() => {
             this.moveLeft();
-            this.initiateAnimation(14, this.IMAGES_WALKING);
+            this.switchAnimation("WALK");
+            this.advanceSpriteAnimation(14);
         }, 1000 / 60);
 
     }

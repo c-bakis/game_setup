@@ -1,7 +1,7 @@
 import Level from "../models/level.class.js";
 
 const level1 = new Level({
-  spawn: { x: 100, y: 320 },
+  spawn: { x: 100, y: 230 },
   cameraDeadZone: 150,
   levelEndX: 3700,
   enemies: [

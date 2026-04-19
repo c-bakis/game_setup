@@ -3,56 +3,110 @@ import MovableObject from "./movable-object.class.js";
 export default class Character extends MovableObject {
   speed = 10;
 
-  IMAGES_WALKING = [
-    "img/character/wizard/Walk1.png",
-    "img/character/wizard/Walk2.png",
-    "img/character/wizard/Walk3.png",
-    "img/character/wizard/Walk4.png",
-  ];
-
-  IMAGES_RUNNING = [
-    "img/character/wizard/Run1.png",
-    "img/character/wizard/Run2.png",
-    "img/character/wizard/Run3.png",
-    "img/character/wizard/Run4.png",
-  ];
-
-  IMAGES_JUMPING = [
-    "img/character/wizard/Jump1.png",
-    "img/character/wizard/Jump1.png",
-    "img/character/wizard/Jump2.png",
-    "img/character/wizard/Jump2.png",
-  ];
-
-  IMAGES_DYING = [
-    "img/character/wizard/dead1.png",
-    "img/character/wizard/dead2.png",
-    "img/character/wizard/dead3.png",
-  ];
-
-  IMAGES_HURT = [
-    "img/character/wizard/Hurt1.png",
-    "img/character/wizard/Hurt2.png",
-    "img/character/wizard/Hurt3.png",
-    "img/character/wizard/Hurt4.png",
-  ];
+  SPRITE_ANIMATIONS = {
+    WALK: {
+      path: "img/character/wizard/Walk.png",
+      frameWidth: 128,
+      frameHeight: 128,
+      frameCount: 7,
+    },
+    RUN: {
+      path: "img/character/wizard/Run.png",
+      frameWidth: 128,
+      frameHeight: 128,
+      frameCount: 8,
+    },
+    JUMP: {
+      path: "img/character/wizard/Jump.png",
+      frameWidth: 128,
+      frameHeight: 128,
+      frameCount: 11,
+    },
+    HURT: {
+      path: "img/character/wizard/Hurt.png",
+      frameWidth: 128,
+      frameHeight: 128,
+      frameCount: 4,
+    },
+    DEAD: {
+      path: "img/character/wizard/Dead.png",
+      frameWidth: 128,
+      frameHeight: 128,
+      frameCount: 4,
+    },
+  };
 
   currentImg = 0;
   animationCounter = 0;
-  deathFrameIndex = 0;
-  deathAnimationCounter = 0;
+  activeAnimation = "WALK";
   deathAnimationFinished = false;
 
   constructor() {
     super();
-    this.loadImage("img/character/wizard/Walk1.png");
-    this.loadImages(this.IMAGES_RUNNING);
-    this.loadImages(this.IMAGES_WALKING);
-    this.loadImages(this.IMAGES_JUMPING);
-    this.loadImages(this.IMAGES_DYING);
+    this.hitboxOffsetX = 55;
+    this.hitboxOffsetY = 75;
+    this.hitboxWidth = 32;
+    this.hitboxHeight = 100;
+
+    const animationPaths = Object.values(this.SPRITE_ANIMATIONS).map(
+      (config) => config.path,
+    );
+    this.loadImages(animationPaths);
+    this.switchAnimation("WALK");
 
     this.animate();
     this.applyGravity();
+  }
+
+  switchAnimation(name) {
+    if (this.activeAnimation === name && this.spriteSheet) {
+      return;
+    }
+
+    const config = this.SPRITE_ANIMATIONS[name];
+    if (!config) {
+      return;
+    }
+
+    this.activeAnimation = name;
+    this.animationCounter = 0;
+    this.spriteSheet = {
+      frameWidth: config.frameWidth,
+      frameHeight: config.frameHeight,
+      frameCount: config.frameCount,
+      currentFrame: 0,
+    };
+    this.img = this.imgCache[config.path];
+
+    if (!this.img) {
+      this.loadImage(config.path);
+    }
+  }
+
+  advanceSpriteAnimation(speed, shouldLoop = true) {
+    if (!this.spriteSheet) {
+      return;
+    }
+
+    this.animationCounter++;
+    if (this.animationCounter % speed !== 0) {
+      return;
+    }
+
+    const lastFrame = this.spriteSheet.frameCount - 1;
+    if (shouldLoop) {
+      this.spriteSheet.currentFrame =
+        (this.spriteSheet.currentFrame + 1) % this.spriteSheet.frameCount;
+      return;
+    }
+
+    if (this.spriteSheet.currentFrame < lastFrame) {
+      this.spriteSheet.currentFrame++;
+      return;
+    }
+
+    this.deathAnimationFinished = true;
+    this.speedY = 0;
   }
 
   animate() {
@@ -82,7 +136,7 @@ export default class Character extends MovableObject {
       }
 
       if (this.world.keyboard.DOWN && !this.isAboveGround()) {
-          this.resetPositionY(320);
+          this.resetPositionY(this.groundY);
       }
 
       if (isMovingHorizontally) {
@@ -94,32 +148,26 @@ export default class Character extends MovableObject {
       if (this.energy <= 0) {
         this.playDeathAnimationOnce(10);
       } else if (this.isAboveGround()) {
-        this.initiateAnimation(10, this.IMAGES_JUMPING);
+        this.switchAnimation("JUMP");
+        this.advanceSpriteAnimation(8);
       } else if (isMovingHorizontally) {
-        this.initiateAnimation(6, this.IMAGES_RUNNING);
+        this.switchAnimation("RUN");
+        this.advanceSpriteAnimation(6);
       } else {
+        this.switchAnimation("WALK");
         this.stopAnimation();
       }
   }
 
   playDeathAnimationOnce(speed) {
+    this.switchAnimation("DEAD");
+
     if (this.deathAnimationFinished) {
-      this.img.src = this.IMAGES_DYING[this.IMAGES_DYING.length - 1];
+      this.spriteSheet.currentFrame = this.spriteSheet.frameCount - 1;
       return;
     }
 
-    this.deathAnimationCounter++;
-    if (this.deathAnimationCounter % speed !== 0) {
-      return;
-    }
-
-    this.img.src = this.IMAGES_DYING[this.deathFrameIndex];
-    this.deathFrameIndex++;
-
-    if (this.deathFrameIndex >= this.IMAGES_DYING.length) {
-      this.deathAnimationFinished = true;
-      this.speedY = 0;
-    }
+    this.advanceSpriteAnimation(speed, false);
   }
 
   moveCharacter() {

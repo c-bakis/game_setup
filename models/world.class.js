@@ -35,6 +35,7 @@ export default class World {
     }
     if (typeof level?.spawn?.y === "number") {
       this.character.y = level.spawn.y;
+      this.character.groundY = level.spawn.y;
     }
     this.character.world = this;
     this.cameraAnchorX = this.character.x;
@@ -74,11 +75,18 @@ export default class World {
 
 
   isCollidingAABB(a, b) {
+    const boxA = typeof a?.getHitbox === "function"
+      ? a.getHitbox()
+      : { x: a.x, y: a.y, width: a.width, height: a.height };
+    const boxB = typeof b?.getHitbox === "function"
+      ? b.getHitbox()
+      : { x: b.x, y: b.y, width: b.width, height: b.height };
+
     return (
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
+      boxA.x < boxB.x + boxB.width &&
+      boxA.x + boxA.width > boxB.x &&
+      boxA.y < boxB.y + boxB.height &&
+      boxA.y + boxA.height > boxB.y
     );
   }
 
