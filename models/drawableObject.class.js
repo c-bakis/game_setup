@@ -25,16 +25,24 @@ export default class DrawableObject {
       const frameWidth = this.spriteSheet.frameWidth;
       const frameHeight = this.spriteSheet.frameHeight;
       const frameCount = this.spriteSheet.frameCount;
+      const layout = this.spriteSheet.layout ?? "row";
+      const columns = this.spriteSheet.columns ?? 1;
       const currentFrame = Math.max(
         0,
         Math.min(this.spriteSheet.currentFrame ?? 0, frameCount - 1),
       );
-      const frameX = currentFrame * frameWidth;
+      let frameX = layout === "column" ? 0 : currentFrame * frameWidth;
+      let frameY = layout === "column" ? currentFrame * frameHeight : 0;
+
+      if (columns > 1) {
+        frameX = (currentFrame % columns) * frameWidth;
+        frameY = Math.floor(currentFrame / columns) * frameHeight;
+      }
 
       ctx.drawImage(
         this.img,
         frameX,
-        0,
+        frameY,
         frameWidth,
         frameHeight,
         this.x,

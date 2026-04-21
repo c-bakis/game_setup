@@ -19,6 +19,9 @@ export default class MovableObject extends DrawableObject {
   lastHitAt = 0;
   hurtDuration = 1000;
   knockbackDistance = 18;
+  damageWindowStartFrame = null;
+  damageWindowEndFrame = null;
+  damageWindowAnimation = null;
   imgCache = {};
   otherDirection = false;
   isDefeated = false;
@@ -39,7 +42,10 @@ export default class MovableObject extends DrawableObject {
 
   drawBoundingBox(ctx) {
     const shouldDrawBoundingBox =
-      this.constructor?.name === "Character" || this.constructor?.name === "Slime" || this.constructor?.name === "Tileset";
+      this.constructor?.name === "Character" ||
+      this.constructor?.name === "Slime" ||
+      this.constructor?.name === "PredatorPlant" ||
+      this.constructor?.name === "Tileset";
 
     if (shouldDrawBoundingBox) {
       const hitbox = this.getHitbox();
@@ -148,7 +154,8 @@ export default class MovableObject extends DrawableObject {
 
     if (this.constructor?.name === "Character") {
       const minX = 80;
-      const maxX = this.world?.level?.levelEndX ?? Infinity;
+      const worldEndX = this.world?.level?.levelEndX ?? Infinity;
+      const maxX = worldEndX - this.width;
       this.x = Math.max(minX, Math.min(nextX, maxX));
       return;
     }
@@ -171,6 +178,29 @@ export default class MovableObject extends DrawableObject {
 
   jump(speedY) {
     this.speedY = speedY;
+  }
+
+  canDealDamage() {
+    const hasStart = Number.isFinite(this.damageWindowStartFrame);
+    const hasEnd = Number.isFinite(this.damageWindowEndFrame);
+
+    if (!hasStart || !hasEnd) {
+      return true;
+    }
+
+    if (this.damageWindowAnimation && this.activeAnimation !== this.damageWindowAnimation) {
+      return false;
+    }
+
+    if (!this.spriteSheet) {
+      return false;
+    }
+
+    const frameNumber = (this.spriteSheet.currentFrame ?? 0) + 1;
+    return (
+      frameNumber >= this.damageWindowStartFrame &&
+      frameNumber <= this.damageWindowEndFrame
+    );
   }
 
   isDefeated() {

@@ -176,8 +176,12 @@ export default class Character extends MovableObject {
   }
 
   moveCharacter() {
-    if (this.world.keyboard.RIGHT && this.x < this.world.level.levelEndX) {
+    const worldEndX = this.world?.level?.levelEndX ?? Infinity;
+    const maxCharacterX = worldEndX - this.width;
+
+    if (this.world.keyboard.RIGHT && this.x < maxCharacterX) {
       this.moveRight();
+      this.x = Math.min(this.x, maxCharacterX);
     }
     if (this.world.keyboard.LEFT && this.x >= 80 ) {
       this.moveLeft();

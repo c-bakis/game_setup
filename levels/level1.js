@@ -8,6 +8,7 @@ const level1 = new Level({
     { type: "slime" },
     { type: "slime" },
     { type: "slime" },
+    { type: "predatorPlant", x: 980, yOffset: -85 },
   ],
   backgroundLayers: [
     { type: "background", imagePath: "img/backgrounds/sky.png", parallaxFactor: 0.32 },
@@ -21,7 +22,11 @@ const level1 = new Level({
     { imagePath: "img/tiles/stone-ground.png", x: 0, y: 435, width: 210, height: 42 },
     { imagePath: "img/tiles/small_spikes2.png", x: 2053, y: 380, width: 121, height: 63 },
     { imagePath: "img/tiles/floating_grass.png", x: 1880, y: 280, width: 160, height: 50 },
-    { imagePath: "img/tiles/floating_grass.png", x: 2060, y: 200, width: 160, height: 50 },
+    { imagePath: "img/tiles/floating_grass.png", x: 1060, y: 175, width: 160, height: 50 },
+    { imagePath: "img/tiles/floating_grass.png", x: 900, y: 135, width: 150, height: 50 },
+    { imagePath: "img/tiles/floating_grass.png", x: 1380, y: 270, width: 160, height: 50 },
+    { imagePath: "img/tiles/floating_grass.png", x: 2060, y: 190, width: 160, height: 50 },
+    { imagePath: "img/tiles/floating_grass.png", x: 2360, y: 140, width: 160, height: 50 },
   ],
 });
 

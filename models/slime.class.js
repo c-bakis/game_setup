@@ -18,7 +18,7 @@ export default class Slime extends MovableObject {
     
     constructor() {
         super();
-        this.x = Math.random() * 350 + 350;
+        this.x = Math.random() * 1000 + 350;
         this.y = 270;
         this.width = 130;
         this.height = 140;

@@ -14,8 +14,12 @@ export default class World {
   ctx;
   keyboard;
   camera_x = 0;
+  camera_y = 0;
   cameraDeadZone = 150;
+  cameraDeadZoneY = 85;
+  cameraMaxUp = 95;
   cameraAnchorX = 0;
+  cameraAnchorY = 0;
   level;
 
   constructor(canvas, level) {
@@ -30,6 +34,12 @@ export default class World {
     if (typeof level?.cameraDeadZone === "number") {
       this.cameraDeadZone = level.cameraDeadZone;
     }
+    if (typeof level?.cameraDeadZoneY === "number") {
+      this.cameraDeadZoneY = level.cameraDeadZoneY;
+    }
+    if (typeof level?.cameraMaxUp === "number") {
+      this.cameraMaxUp = level.cameraMaxUp;
+    }
     if (typeof level?.spawn?.x === "number") {
       this.character.x = level.spawn.x;
     }
@@ -40,8 +50,14 @@ export default class World {
       this.character.previousY = level.spawn.y;
     }
     this.character.world = this;
+    this.enemies.forEach((enemy) => {
+      enemy.world = this;
+    });
+    this.updateEnemyPlatformLocks();
     this.cameraAnchorX = this.character.x;
+    this.cameraAnchorY = this.character.y;
     this.camera_x = -this.character.x;
+    this.camera_y = 0;
     this.fillTilesAcrossGround();
     this.draw();
   }
@@ -62,6 +78,10 @@ export default class World {
 
   checkDemageOnCollision(enemy, isColliding, now) {
     if (!isColliding) {
+      return;
+    }
+
+    if (typeof enemy?.canDealDamage === "function" && !enemy.canDealDamage()) {
       return;
     }
 
@@ -187,33 +207,67 @@ export default class World {
 
     this.updateCamera();
 
-    this.ctx.translate(this.camera_x, 0);
+    this.ctx.translate(this.camera_x, this.camera_y);
 
     this.resolvePlatformGround();
     this.addRepeatingBackgroundsToMap(this.backgroundObjects);
     this.addObjToMap(this.tileset);
     this.addToMap(this.character);
+    this.updateEnemyPlatformLocks();
     this.addObjToMap(this.enemies);
     this.checkCollisions();
-    this.ctx.translate(-this.camera_x, 0);
+    this.ctx.translate(-this.camera_x, -this.camera_y);
     this.statusBar.draw(this.ctx);
     requestAnimationFrame(() => this.draw());
   }
 
   updateCamera() {
     const deltaFromAnchor = this.character.x - this.cameraAnchorX;
+    const deltaYUp = this.cameraAnchorY - this.character.y;
+    let nextCameraX = -this.cameraAnchorX;
+    let nextCameraY = 0;
 
     if (deltaFromAnchor > this.cameraDeadZone) {
-      this.camera_x = -(this.character.x - this.cameraDeadZone);
-      return;
+      nextCameraX = -(this.character.x - this.cameraDeadZone);
+    } else if (deltaFromAnchor < -this.cameraDeadZone) {
+      nextCameraX = -(this.character.x + this.cameraDeadZone);
     }
 
-    if (deltaFromAnchor < -this.cameraDeadZone) {
-      this.camera_x = -(this.character.x + this.cameraDeadZone);
-      return;
+    const bounds = this.getCameraBounds();
+    this.camera_x = this.clamp(nextCameraX, bounds.min, bounds.max);
+
+    if (deltaYUp > this.cameraDeadZoneY) {
+      nextCameraY = deltaYUp - this.cameraDeadZoneY;
+    }
+    this.camera_y = this.clamp(nextCameraY, 0, this.cameraMaxUp);
+  }
+
+  getCameraBounds() {
+    const max = -this.cameraAnchorX;
+    const levelEndX = this.level?.levelEndX;
+
+    if (!Number.isFinite(levelEndX) || !Number.isFinite(this.canvas?.width)) {
+      return { min: -Infinity, max };
     }
 
-    this.camera_x = -this.cameraAnchorX;
+    const min = Math.min(max, this.canvas.width - levelEndX);
+    return { min, max };
+  }
+
+  clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  updateEnemyPlatformLocks() {
+    this.enemies.forEach((enemy) => {
+      if (typeof enemy.updatePlatformLock === "function") {
+        enemy.updatePlatformLock(this.tileset);
+      }
+    });
+  }
+
+  getBackgroundVerticalPadding() {
+    return Math.max(0, this.cameraMaxUp);
   }
 
   addObjToMap(objects) {
@@ -238,6 +292,9 @@ export default class World {
       const parallaxCameraX = this.camera_x * parallaxFactor;
       const parallaxOffset = this.camera_x * (parallaxFactor - 1);
       const tileWidth = backgroundObject.width;
+      const verticalPadding = this.getBackgroundVerticalPadding();
+      const drawY = backgroundObject.y - verticalPadding;
+      const drawHeight = backgroundObject.height + verticalPadding;
       const cameraWorldX = -parallaxCameraX;
       const startTileIndex =
         Math.floor((cameraWorldX - backgroundObject.x) / tileWidth) - 1;
@@ -251,9 +308,9 @@ export default class World {
         this.ctx.drawImage(
           backgroundObject.img,
           tileX,
-          backgroundObject.y,
+          drawY,
           backgroundObject.width,
-          backgroundObject.height,
+          drawHeight,
         );
       }
     };

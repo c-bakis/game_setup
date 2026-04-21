@@ -2,6 +2,7 @@ import BackgroundObject from "./background-object.class.js";
 import Clouds from "./clouds.class.js";
 import Tileset from "./tileset.class.js";
 import Slime from "./slime.class.js";
+import PredatorPlant from "./predator-plant.class.js";
 
 export default class LevelBuilder {
     static build(level) {
@@ -39,6 +40,20 @@ export default class LevelBuilder {
                     slime.y = enemy.y;
                 }
                 return slime;
+            }
+
+            if (enemy.type === "predatorPlant") {
+                const predatorPlant = new PredatorPlant();
+                if (typeof enemy.x === "number") {
+                    predatorPlant.x = enemy.x;
+                }
+                if (typeof enemy.y === "number") {
+                    predatorPlant.y = enemy.y;
+                }
+                if (typeof enemy.yOffset === "number") {
+                    predatorPlant.platformYOffset = enemy.yOffset;
+                }
+                return predatorPlant;
             }
 
             return null;
