@@ -1,8 +1,11 @@
-import BackgroundObject from "./background-object.class.js";
-import Clouds from "./clouds.class.js";
-import Tileset from "./tileset.class.js";
-import Slime from "./slime.class.js";
-import PredatorPlant from "./predator-plant.class.js";
+import BackgroundObject from "../environment/background-object.class.js";
+import Clouds from "../environment/clouds.class.js";
+import Tileset from "../environment/tileset.class.js";
+import Slime from "../enemies/slime.class.js";
+import PredatorPlant from "../enemies/predator-plant.class.js";
+import Spider from "../enemies/spider.class.js";
+import DecorationObject from "../environment/decoration-object.class.js";
+import ManaStone from "../collectables/mana-stone.class.js";
 
 export default class LevelBuilder {
     static build(level) {
@@ -10,6 +13,8 @@ export default class LevelBuilder {
             backgroundObjects: this.buildBackgrounds(level?.backgroundLayers ?? []),
             tileset: this.buildTiles(level?.tiles ?? []),
             enemies: this.buildEnemies(level?.enemies ?? []),
+            collectables: this.buildCollectables(level?.collectables ?? []),
+            decorations: this.buildDecorations(level?.decorations ?? []),
         };
     }
 
@@ -27,6 +32,22 @@ export default class LevelBuilder {
         return tiles.map((tile) => {
             return new Tileset(tile.imagePath, tile.x, tile.y, tile.width, tile.height);
         });
+    }
+
+    static buildDecorations(decorations) {
+        return decorations.map((deco) => {
+            return new DecorationObject(deco);
+        });
+    }
+
+    static buildCollectables(collectables) {
+        return collectables.map((collectable) => {
+            if (collectable.type === "manaStone") {
+                return new ManaStone(collectable);
+            }
+
+            return null;
+        }).filter(Boolean);
     }
 
     static buildEnemies(enemies) {
@@ -54,6 +75,20 @@ export default class LevelBuilder {
                     predatorPlant.platformYOffset = enemy.yOffset;
                 }
                 return predatorPlant;
+            }
+
+            if (enemy.type === "spider") {
+                const spider = new Spider();
+                if (typeof enemy.x === "number") {
+                    spider.x = enemy.x;
+                }
+                if (typeof enemy.y === "number") {
+                    spider.y = enemy.y;
+                }
+                if (typeof enemy.yOffset === "number") {
+                    spider.platformYOffset = enemy.yOffset;
+                }
+                return spider;
             }
 
             return null;

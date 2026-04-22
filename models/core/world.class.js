@@ -1,13 +1,15 @@
-import Tileset from "./tileset.class.js";
-import Character from "./character.class.js";
+import Tileset from "../environment/tileset.class.js";
+import Character from "../player/character.class.js";
 import Keyboard from "./keyboard.class.js";
 import LevelBuilder from "./level-builder.class.js";
-import StatusBar from "./status-bar.class.js";
+import StatusBar from "../ui/status-bar.class.js";
 
 export default class World {
   backgroundObjects = [];
   tileset = [];
   enemies = [];
+  collectables = [];
+  decorations = [];
   statusBar = new StatusBar();
   character = new Character();
   canvas;
@@ -31,6 +33,8 @@ export default class World {
     this.backgroundObjects = builtLevel.backgroundObjects;
     this.tileset = builtLevel.tileset;
     this.enemies = builtLevel.enemies;
+    this.collectables = builtLevel.collectables ?? [];
+    this.decorations = builtLevel.decorations ?? [];
     if (typeof level?.cameraDeadZone === "number") {
       this.cameraDeadZone = level.cameraDeadZone;
     }
@@ -65,19 +69,73 @@ export default class World {
   checkCollisions() {
     const now = Date.now();
 
+    this.checkCollectableCollisions();
+
     this.enemies.forEach((enemy) => {
+      if (enemy?.isDefeated) {
+        return;
+      }
+
       const hasCollisionMethod =
         typeof this.character?.isCollidingWith === "function";
       const isColliding = hasCollisionMethod
         ? this.character.isCollidingWith(enemy)
         : this.isCollidingAABB(this.character, enemy);
 
+      const attackHitbox = typeof this.character?.getAttackHitbox === "function"
+        ? this.character.getAttackHitbox()
+        : null;
+      const enemyBox = this.getObjectBox(enemy);
+      const isAttackColliding = attackHitbox
+        ? this.isBoxColliding(attackHitbox, enemyBox)
+        : isColliding;
+
+      this.checkCharacterAttackOnEnemy(enemy, isAttackColliding, now);
       this.checkDemageOnCollision(enemy, isColliding, now);
+    });
+
+    this.enemies = this.enemies.filter((enemy) => !enemy?.isDefeated);
+    this.collectables = this.collectables.filter((collectable) => !collectable?.collected);
+  }
+
+  checkCollectableCollisions() {
+    this.collectables.forEach((collectable) => {
+      const isColliding = this.isCollidingAABB(this.character, collectable);
+      if (!isColliding || typeof collectable?.onCollect !== "function") {
+        return;
+      }
+
+      collectable.onCollect(this.character);
+      this.statusBar.setPercentage(this.character.mana, "mana");
     });
   }
 
+  checkCharacterAttackOnEnemy(enemy, isColliding, now) {
+    const canAttack = typeof this.character?.canDealDamageToEnemy === "function";
+    if (!canAttack || !this.character.canDealDamageToEnemy(enemy, isColliding)) {
+      return;
+    }
+
+    const damage = Number.isFinite(this.character?.attackDamage)
+      ? this.character.attackDamage
+      : 35;
+    const sourceX = this.character.x + this.character.width / 2;
+    const didTakeDamage = typeof enemy?.takeDamage === "function"
+      ? enemy.takeDamage(damage, now, sourceX)
+      : false;
+
+    if (!didTakeDamage) {
+      return;
+    }
+
+    this.character.registerEnemyHit(enemy);
+    if ((enemy.energy ?? 0) <= 0) {
+      enemy.isDefeated = true;
+    }
+  }
+
   checkDemageOnCollision(enemy, isColliding, now) {
-    if (!isColliding) {
+    if (!isColliding || enemy?.isDefeated) {
       return;
     }
 
@@ -111,6 +169,15 @@ export default class World {
     return typeof object?.getHitbox === "function"
       ? object.getHitbox()
       : { x: object.x, y: object.y, width: object.width, height: object.height };
+  }
+
+  isBoxColliding(a, b) {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
   }
 
   resolvePlatformGround() {
@@ -212,6 +279,8 @@ export default class World {
     this.resolvePlatformGround();
     this.addRepeatingBackgroundsToMap(this.backgroundObjects);
     this.addObjToMap(this.tileset);
+    this.addObjToMap(this.decorations);
+    this.addObjToMap(this.collectables);
     this.addToMap(this.character);
     this.updateEnemyPlatformLocks();
     this.addObjToMap(this.enemies);
@@ -331,28 +400,30 @@ export default class World {
     }
   }
 
-  addToMap(movableObject) {
-    if (!movableObject?.img) {
+  addToMap(drawableObject) {
+    if (!drawableObject?.img) {
       return;
     }
 
-    const isMirrored = this.mirrorObjectIfNeeded(movableObject);
-    if (movableObject.img.complete && movableObject.img.naturalWidth > 0) {
-      movableObject.draw(this.ctx);
-      movableObject.drawBoundingBox(this.ctx);
+    const isMirrored = this.mirrorObjectIfNeeded(drawableObject);
+    if (drawableObject.img.complete && drawableObject.img.naturalWidth > 0) {
+      drawableObject.draw(this.ctx);
+      if (typeof drawableObject.drawBoundingBox === "function") {
+        drawableObject.drawBoundingBox(this.ctx);
+      }
     } else {
-      movableObject.img.onload = () => {
-        if (movableObject.img.naturalWidth > 0) {
+      drawableObject.img.onload = () => {
+        if (drawableObject.img.naturalWidth > 0) {
           this.ctx.drawImage(
-            movableObject.img,
-            movableObject.x,
-            movableObject.y,
-            movableObject.width,
-            movableObject.height,
+            drawableObject.img,
+            drawableObject.x,
+            drawableObject.y,
+            drawableObject.width,
+            drawableObject.height,
           );
         }
       };
-      movableObject.img.onerror = () =>
+      drawableObject.img.onerror = () =>
         console.error("Movable object image failed to load.");
     }
     if (isMirrored) {

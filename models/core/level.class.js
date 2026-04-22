@@ -3,7 +3,8 @@ export default class Level {
     backgroundLayers;
     keys;
     tiles;
-    stones;
+    collectables;
+    decorations;
     cameraDeadZone;
     spawn;
     levelEndX;
@@ -13,7 +14,8 @@ export default class Level {
         backgroundLayers = [],
         keys = [],
         tiles = [],
-        stones = [],
+        collectables = [],
+        decorations = [],
         cameraDeadZone = 150,
         spawn = { x: 100, y: 263 },
         levelEndX = 1000,
@@ -22,7 +24,8 @@ export default class Level {
         this.backgroundLayers = backgroundLayers;
         this.keys = keys;
         this.tiles = tiles;
-        this.stones = stones;
+        this.collectables = collectables;
+        this.decorations = decorations;
         this.cameraDeadZone = cameraDeadZone;
         this.spawn = spawn;
         this.levelEndX = levelEndX;

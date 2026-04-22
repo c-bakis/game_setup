@@ -45,6 +45,7 @@ export default class MovableObject extends DrawableObject {
       this.constructor?.name === "Character" ||
       this.constructor?.name === "Slime" ||
       this.constructor?.name === "PredatorPlant" ||
+      this.constructor?.name === "Spider" ||
       this.constructor?.name === "Tileset";
 
     if (shouldDrawBoundingBox) {

@@ -1,4 +1,4 @@
-import DrawableObject from "./drawableObject.class.js";
+import DrawableObject from "../core/drawableObject.class.js";
 
 export default class StatusBar extends DrawableObject {
     health = 100;

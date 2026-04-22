@@ -1,7 +1,8 @@
-import MovableObject from "./movable-object.class.js";
+import MovableObject from "../core/movable-object.class.js";
 
 export default class Slime extends MovableObject {
     damage = 10;
+    energy= 10;
 
     SPRITE_ANIMATIONS = {
         WALK: {
