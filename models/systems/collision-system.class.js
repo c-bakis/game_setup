@@ -15,6 +15,10 @@ export default class CollisionSystem {
     return this.world.character;
   }
 
+  get magicAttacks() {
+    return this.world.magicAttacks ?? [];
+  }
+
   get statusBar() {
     return this.world.statusBar;
   }
@@ -26,8 +30,76 @@ export default class CollisionSystem {
     run(now) {
         this.checkCollectableCollisions();
         this.checkEnemyCollisions(now);
+        this.checkMagicAttackCollisions(now);
         this.cleanupDefeatedAndCollected();
     }
+
+  checkMagicAttackCollisions(now) {
+    for (const attack of this.magicAttacks) {
+      if (this.shouldSkipMagicAttack(attack)) {
+        continue;
+      }
+
+      this.checkSingleMagicAttack(attack, now);
+    }
+  }
+
+  shouldSkipMagicAttack(attack) {
+    return !attack || attack.isConsumed;
+  }
+
+  checkSingleMagicAttack(attack, now) {
+    for (const enemy of this.enemies) {
+      if (this.shouldSkipMagicTarget(attack, enemy)) {
+        continue;
+      }
+
+      const didTakeDamage = this.applyMagicAttackDamage(attack, enemy, now);
+      if (!didTakeDamage) {
+        continue;
+      }
+
+      this.markMagicAttackHit(attack, enemy);
+      break;
+    }
+  }
+
+  shouldSkipMagicTarget(attack, enemy) {
+    return enemy?.isDefeated || !this.isCollidingAABB(attack, enemy);
+  }
+
+  applyMagicAttackDamage(attack, enemy, now) {
+    const damage = this.getMagicAttackDamage(attack);
+    const sourceX = this.getAttackCenterX(attack);
+    return typeof enemy?.takeDamage === "function"
+      ? enemy.takeDamage(damage, now, sourceX)
+      : false;
+  }
+
+  getMagicAttackDamage(attack) {
+    if (Number.isFinite(attack?.damage)) {
+      return attack.damage;
+    }
+
+    if (Number.isFinite(attack?.attackDamage)) {
+      return attack.attackDamage;
+    }
+
+    return 10;
+  }
+
+  getAttackCenterX(attack) {
+    const attackBox = this.getObjectBox(attack);
+    return attackBox.x + attackBox.width / 2;
+  }
+
+  markMagicAttackHit(attack, enemy) {
+    if ((enemy.energy ?? 0) <= 0) {
+      enemy.isDefeated = true;
+    }
+
+    attack.isConsumed = true;
+  }
 
   checkEnemyCollisions(now) {
     for (const enemy of this.enemies) {

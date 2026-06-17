@@ -160,6 +160,10 @@ export default class World {
 
   updateMagicAttacks() {
     this.magicAttacks = this.magicAttacks.filter((attack) => {
+      if (!attack || attack.isConsumed) {
+        return false;
+      }
+
       if (typeof attack?.update === "function") {
         attack.update();
       }

@@ -14,6 +14,7 @@ export default class MagicAttack extends MovableObject {
 
   currentImg = 0;
   animationCounter = 0;
+  isConsumed = false;
 
   RIGHT_HAND_SPAWN_X_RATIO = 0.60;
   LEFT_HAND_SPAWN_X_RATIO = 0.34;
@@ -24,9 +25,13 @@ export default class MagicAttack extends MovableObject {
     this.world = character?.world;
     this.loadImage("img/character/wizard/fire_magic.png");
     this.width = 120;
-    this.height = 90;
+    this.height = 100;
     this.speed = 2;
     this.damage = 10;
+    this.hitboxOffsetX = 18;
+    this.hitboxOffsetY = 25;
+    this.hitboxWidth = 84;
+    this.hitboxHeight = 40;
     this.spriteSheet = {
       frameWidth: this.SPRITE_ANIMATION.frameWidth,
       frameHeight: this.SPRITE_ANIMATION.frameHeight,
