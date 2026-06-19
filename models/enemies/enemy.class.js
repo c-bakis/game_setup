@@ -108,49 +108,113 @@ export default class Enemy extends MovableObject {
     }
 
     this.speed = 0;
+    this.switchToDeadAnimationIfAvailable();
 
-    if (this.getAnimationConfig("DEAD")) {
-      this.switchAnimation("DEAD");
-    }
-
-    if (!this.spriteSheet || this.defeatAnimationFinished) {
+    if (this.shouldSkipDefeatFrameAdvance()) {
       return true;
     }
 
-    this.animationCounter++;
-    if (this.animationCounter % speed !== 0) {
+    if (!this.shouldAdvanceDefeatFrame(speed)) {
       return true;
     }
 
-    const endFrame = Number.isFinite(this.spriteSheet.endFrame)
-      ? this.spriteSheet.endFrame
-      : this.spriteSheet.frameCount - 1;
-
-    if (this.spriteSheet.currentFrame < endFrame) {
-      this.spriteSheet.currentFrame++;
+    if (this.tryAdvanceDefeatFrame()) {
       return true;
     }
 
-    this.defeatAnimationFinished = true;
-    this.defeatAnimationFinishedAt = Date.now();
-    this.spriteSheet.currentFrame = endFrame;
+    this.finishDefeatAnimation();
     return true;
   }
 
   shouldRemoveAfterDefeat(now = Date.now()) {
-    if (!this.isDefeated || !this.defeatAnimationFinished) {
+    if (!this.isReadyForDefeatCleanup()) {
       return false;
     }
 
-    if (!Number.isFinite(this.defeatAnimationFinishedAt)) {
+    return this.hasDefeatCleanupDelayPassed(now);
+  }
+
+  draw(ctx) {
+    this.updateHitFlashState();
+    this.applyHitFlashFilter(ctx);
+    super.draw(ctx);
+    this.restoreHitFlashFilter(ctx);
+  }
+
+  switchToDeadAnimationIfAvailable() {
+    if (this.getAnimationConfig("DEAD")) {
+      this.switchAnimation("DEAD");
+    }
+  }
+
+  shouldSkipDefeatFrameAdvance() {
+    return !this.spriteSheet || this.defeatAnimationFinished;
+  }
+
+  shouldAdvanceDefeatFrame(speed) {
+    this.animationCounter++;
+    return this.animationCounter % speed === 0;
+  }
+
+  tryAdvanceDefeatFrame() {
+    const endFrame = this.getCurrentAnimationEndFrame();
+    if (this.spriteSheet.currentFrame >= endFrame) {
       return false;
     }
 
+    this.spriteSheet.currentFrame++;
+    return true;
+  }
+
+  finishDefeatAnimation() {
+    this.defeatAnimationFinished = true;
+    this.defeatAnimationFinishedAt = Date.now();
+    this.spriteSheet.currentFrame = this.getCurrentAnimationEndFrame();
+  }
+
+  getCurrentAnimationEndFrame() {
+    if (Number.isFinite(this.spriteSheet?.endFrame)) {
+      return this.spriteSheet.endFrame;
+    }
+
+    return (this.spriteSheet?.frameCount ?? 1) - 1;
+  }
+
+  isReadyForDefeatCleanup() {
+    return (
+      this.isDefeated &&
+      this.defeatAnimationFinished &&
+      Number.isFinite(this.defeatAnimationFinishedAt)
+    );
+  }
+
+  hasDefeatCleanupDelayPassed(now = Date.now()) {
     return now - this.defeatAnimationFinishedAt >= this.defeatCleanupDelayMs;
   }
 
+  updateHitFlashState(now = Date.now()) {
+    if (this.isHitFlashing && now > this.hitFlashEndAt) {
+      this.isHitFlashing = false;
+    }
+  }
+
+  applyHitFlashFilter(ctx) {
+    if (!this.isHitFlashing) {
+      return;
+    }
+
+    ctx.save();
+    ctx.filter = "brightness(1.8)";
+  }
+
+  restoreHitFlashFilter(ctx) {
+    if (this.isHitFlashing) {
+      ctx.restore();
+    }
+  }
+
   switchAnimation(name) {
-    if (this.shouldKeepCurrentAnimation(name)) {
+    if (this.shouldSkipAnimationSwitch(name)) {
       return;
     }
 
@@ -159,16 +223,27 @@ export default class Enemy extends MovableObject {
       return;
     }
 
+    this.applyAnimationConfig(name, config);
+    this.ensureAnimationImage(config.path);
+  }
+
+  shouldSkipAnimationSwitch(name) {
+    return this.isAnimationAlreadyActive(name);
+  }
+
+  applyAnimationConfig(name, config) {
     this.prepareAnimationSwitch(name);
     this.spriteSheet = this.buildSpriteSheetConfig(config);
-    this.img = this.imgCache[config.path];
+  }
 
+  ensureAnimationImage(path) {
+    this.img = this.imgCache[path];
     if (!this.img) {
-      this.loadImage(config.path);
+      this.loadImage(path);
     }
   }
 
-  shouldKeepCurrentAnimation(name) {
+  isAnimationAlreadyActive(name) {
     return this.activeAnimation === name && this.spriteSheet;
   }
 
@@ -186,6 +261,10 @@ export default class Enemy extends MovableObject {
     const sheetFrameCount = this.resolveSheetFrameCount(config, frameRange.endFrame);
     const columns = this.resolveColumns(config, sheetFrameCount);
 
+    return this.createSpriteSheet(config, frameRange, sheetFrameCount, columns);
+  }
+
+  createSpriteSheet(config, frameRange, sheetFrameCount, columns) {
     return {
       frameWidth: config.frameWidth,
       frameHeight: config.frameHeight,
@@ -226,7 +305,4 @@ export default class Enemy extends MovableObject {
 
     return 1;
   }
-
-  
-  
 }

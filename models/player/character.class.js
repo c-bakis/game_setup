@@ -263,6 +263,25 @@ export default class Character extends MovableObject {
     this.animator.switchAnimation(name);
   }
 
+  draw(ctx) {
+    const now = Date.now();
+
+    if (this.isHitFlashing && now > this.hitFlashEndAt) {
+      this.isHitFlashing = false;
+    }
+
+    if (this.isHitFlashing) {
+      ctx.save();
+      ctx.filter = "brightness(1.8)";
+    }
+
+    super.draw(ctx);
+
+    if (this.isHitFlashing) {
+      ctx.restore();
+    }
+  }
+
   // ─── Attack hit detection ─────────────────────────────────────────────────────
 
   isInAttackDamageFrame() {
@@ -294,5 +313,10 @@ export default class Character extends MovableObject {
       height: h,
     };
   }
+
+  handleGameOver() {
+    this.world.handleGameOver();
+  }
+
 }
 

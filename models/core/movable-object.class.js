@@ -22,6 +22,8 @@ export default class MovableObject extends DrawableObject {
   damageWindowStartFrame = null;
   damageWindowEndFrame = null;
   damageWindowAnimation = null;
+  isHitFlashing = false;
+  hitFlashEndAt = 0;
   imgCache = {};
   otherDirection = false;
   isDefeated = false;
@@ -141,8 +143,9 @@ export default class MovableObject extends DrawableObject {
     this.energy = Math.max(0, this.energy - damage);
     this.lastHitAt = now;
     this.applyKnockback(sourceX);
+    this.isHitFlashing = true;
+    this.hitFlashEndAt = now + 150;
     return true;
-
   }
 
   applyKnockback(sourceX) {

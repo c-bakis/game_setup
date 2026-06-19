@@ -199,7 +199,7 @@ export default class StatusBar extends DrawableObject {
         this.drawStaticElements(ctx);
         this.drawBar(ctx, this.healthBarImg, this.x + 70, this.y + 10, 128, 16, "#d33", "health");
         this.drawBar(ctx, this.manaBarImg, this.x + 74, this.y + 23, 108, 16, "#2a7fff", "mana");
-        this.drawBar(ctx, this.expBarImg, this.x + 74, this.y + 36, 94, 16, "#f0b400", "exp");
+        this.drawBar(ctx, this.expBarImg, this.x + 74, this.y + 36, 94, 16, "#3fd603", "exp");
     }
     
 }

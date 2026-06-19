@@ -26,6 +26,7 @@ export default class World {
   cameraMaxUp = 95;
   cameraAnchorX = 0;
   cameraAnchorY = 0;
+  pause = false;
   level;
 
   constructor(canvas, level) {
@@ -106,6 +107,9 @@ export default class World {
     this.collisionSystem.run(Date.now());
     this.ctx.translate(-this.camera_x, -this.camera_y);
     this.statusBar.draw(this.ctx);
+    if (this.pause) {
+      return;
+    }
     requestAnimationFrame(() => this.draw());
   }
 
@@ -230,5 +234,19 @@ export default class World {
     this.ctx.scale(-1, 1);
     this.ctx.translate(-movableObject.x - movableObject.width / 2, 0);
     return true;
+  }
+
+  pauseGame() {
+    this.pause = true;
+  }
+
+  handleGameOver() {
+    console.log("Game Over");
+    this.pauseGame();
+    this.playGameOverUi();
+  }
+
+  playGameOverUi() {
+    
   }
 }

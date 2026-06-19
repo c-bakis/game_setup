@@ -66,6 +66,7 @@ export default class CharacterAnimator {
     if (finished) {
       this.character.deathAnimationFinished = true;
       this.character.speedY = 0;
+      this.character.handleGameOver();
     }
   }
 
