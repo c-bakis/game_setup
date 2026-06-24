@@ -1,13 +1,14 @@
-import Tileset from "../environment/tileset.class.js";
 import Character from "../player/character.class.js";
 import Keyboard from "./keyboard.class.js";
 import LevelBuilder from "./level-builder.class.js";
 import StatusBar from "../ui/status-bar.class.js";
-import GameOver from "../ui/game-over.class.js";
-import Win from "../ui/win.class.js";
 import CollisionSystem from "../systems/collision-system.class.js";
 import BackgroundRenderer from "../systems/background-renderer.class.js";
 import PlattformGroundResolver from "../systems/plattform-ground-resolver.class.js";
+import WorldCameraController from "./world-camera.controller.js";
+import WorldBossController from "./world-boss.controller.js";
+import WorldOverlayController from "./world-overlay.controller.js";
+import WorldRenderController from "./world-render.controller.js";
 
 export default class World {
   // debugForceGameOverOnLoad = true;
@@ -35,6 +36,10 @@ export default class World {
   focusedScriptActor = null;
   hasLevelWon = false;
   pendingWinEnemy = null;
+  cameraController;
+  bossController;
+  overlayController;
+  renderController;
   bossIntroState = {
     active: false,
     played: false,
@@ -47,6 +52,10 @@ export default class World {
     this.canvas = canvas;
     this.level = level;
     this.keyboard = new Keyboard();
+    this.cameraController = new WorldCameraController(this);
+    this.bossController = new WorldBossController(this);
+    this.overlayController = new WorldOverlayController(this);
+    this.renderController = new WorldRenderController(this);
     const builtLevel = LevelBuilder.build(level);
     this.backgroundObjects = builtLevel.backgroundObjects;
     this.tileset = builtLevel.tileset;
@@ -92,290 +101,100 @@ export default class World {
 
   
   getObjectBox(object) {
-    return typeof object?.getHitbox === "function"
-      ? object.getHitbox()
-      : {
-          x: object.x,
-          y: object.y,
-          width: object.width,
-          height: object.height,
-        };
+    return this.renderController.getObjectBox(object);
   }
 
   draw() {
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-
-    this.updateBossIntro();
-    this.updateCamera();
-
-    this.ctx.translate(this.camera_x, this.camera_y);
-
-    this.plattformGroundResolver.resolvePlatformGround();
-    this.backgroundRenderer.drawAll(this.backgroundObjects);
-    // this.addRepeatingBackgroundsToMap(this.backgroundObjects);
-    this.addObjToMap(this.tileset);
-    this.addObjToMap(this.decorations);
-    this.addObjToMap(this.collectables);
-    if (!this.isGameplayFrozen()) {
-      this.updateMagicAttacks();
-    }
-    this.addObjToMap(this.magicAttacks);
-    this.addToMap(this.character);
-    if (!this.isGameplayFrozen()) {
-      this.updateEnemyPlatformLocks();
-    }
-    this.addObjToMap(this.enemies);
-    if (!this.isGameplayFrozen()) {
-      this.collisionSystem.run(Date.now());
-    }
-    this.ctx.translate(-this.camera_x, -this.camera_y);
-    this.statusBar.draw(this.ctx);
-    if (this.pause) {
-      return;
-    }
-    requestAnimationFrame(() => this.draw());
+    this.renderController.draw();
   }
 
   updateCamera() {
-    if (this.isBossIntroActive()) {
-      this.focusCameraOnActor(this.bossIntroState.actor);
-      return;
-    }
-
-    const deltaFromAnchor = this.character.x - this.cameraAnchorX;
-    const deltaYUp = this.cameraAnchorY - this.character.y;
-    let nextCameraX = -this.cameraAnchorX;
-    let nextCameraY = 0;
-
-    if (deltaFromAnchor > this.cameraDeadZone) {
-      nextCameraX = -(this.character.x - this.cameraDeadZone);
-    } else if (deltaFromAnchor < -this.cameraDeadZone) {
-      nextCameraX = -(this.character.x + this.cameraDeadZone);
-    }
-
-    const bounds = this.getCameraBounds();
-    this.camera_x = this.clamp(nextCameraX, bounds.min, bounds.max);
-
-    if (deltaYUp > this.cameraDeadZoneY) {
-      nextCameraY = deltaYUp - this.cameraDeadZoneY;
-    }
-    this.camera_y = this.clamp(nextCameraY, 0, this.cameraMaxUp);
+    this.cameraController.updateCamera();
   }
 
   focusCameraOnActor(actor) {
-    if (!actor) {
-      return;
-    }
-
-    const actorCenterX = actor.x + actor.width / 2;
-    const actorTopY = actor.y;
-    const nextCameraX = -(actorCenterX - this.canvas.width / 2);
-    const nextCameraY = Math.max(0, this.cameraMaxUp - actorTopY + 40);
-    const bounds = this.getCameraBounds();
-
-    this.camera_x = this.clamp(nextCameraX, bounds.min, bounds.max);
-    this.camera_y = this.clamp(nextCameraY, 0, this.cameraMaxUp);
+    this.cameraController.focusCameraOnActor(actor);
   }
 
   getCameraBounds() {
-    const max = -this.cameraAnchorX;
-    const levelEndX = this.level?.levelEndX;
-
-    if (!Number.isFinite(levelEndX) || !Number.isFinite(this.canvas?.width)) {
-      return { min: -Infinity, max };
-    }
-
-    const min = Math.min(max, this.canvas.width - levelEndX);
-    return { min, max };
+    return this.cameraController.getCameraBounds();
   }
 
   clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
+    return this.cameraController.clamp(value, min, max);
   }
 
   updateBossIntro(now = Date.now()) {
-    if (!this.level?.bossIntro) {
-      return;
-    }
-
-    if (this.bossIntroState.active) {
-      if (now >= this.bossIntroState.endsAt) {
-        this.finishBossIntro();
-      }
-      return;
-    }
-
-    if (this.bossIntroState.played) {
-      return;
-    }
-
-    const triggerX = this.level.bossIntro.triggerX;
-    if (!Number.isFinite(triggerX) || this.character.x < triggerX) {
-      return;
-    }
-
-    this.startBossIntro(now);
+    this.bossController.updateBossIntro(now);
   }
 
   startBossIntro(now = Date.now()) {
-    const actor = this.findBossIntroActor();
-    if (!actor) {
-      this.bossIntroState.played = true;
-      return;
-    }
-
-    const durationMs = this.level?.bossIntro?.durationMs ?? 1800;
-    const audioPath = this.level?.bossIntro?.audioPath ?? null;
-    this.bossIntroState = {
-      active: true,
-      played: true,
-      actor,
-      endsAt: now + durationMs,
-    };
-    this.focusedScriptActor = actor;
-    this.freezeGameplay(durationMs, actor);
-    if (typeof actor.startBossIntro === "function") {
-      actor.startBossIntro(audioPath);
-    }
+    this.bossController.startBossIntro(now);
   }
 
   finishBossIntro() {
-    const actor = this.bossIntroState.actor;
-    if (typeof actor?.finishBossIntro === "function") {
-      actor.finishBossIntro();
-    }
-
-    this.bossIntroState = {
-      ...this.bossIntroState,
-      active: false,
-      actor: null,
-      endsAt: 0,
-    };
-    this.focusedScriptActor = null;
-    this.gameplayFreezeUntil = 0;
+    this.bossController.finishBossIntro();
   }
 
   findBossIntroActor() {
-    const enemyType = this.level?.bossIntro?.enemyType;
-    if (!enemyType) {
-      return null;
-    }
-
-    return this.enemies.find((enemy) => {
-      return enemy?.constructor?.name?.toLowerCase() === enemyType.toLowerCase();
-    }) ?? null;
+    return this.bossController.findBossIntroActor();
   }
 
   freezeGameplay(durationMs, actor = null, now = Date.now()) {
-    this.gameplayFreezeUntil = now + durationMs;
-    this.focusedScriptActor = actor;
+    this.bossController.freezeGameplay(durationMs, actor, now);
   }
 
   isGameplayFrozen(actor = null, now = Date.now()) {
-    const isFrozen = now < this.gameplayFreezeUntil;
-    if (!isFrozen) {
-      return false;
-    }
-
-    if (actor && actor === this.focusedScriptActor) {
-      return false;
-    }
-
-    return true;
+    return this.bossController.isGameplayFrozen(actor, now);
   }
 
   isBossIntroActive() {
-    return this.bossIntroState.active;
+    return this.bossController.isBossIntroActive();
   }
 
   updateEnemyPlatformLocks() {
-    this.enemies.forEach((enemy) => {
-      if (typeof enemy.updatePlatformLock === "function") {
-        enemy.updatePlatformLock(this.tileset);
-      }
-    });
+    this.renderController.updateEnemyPlatformLocks();
   }
 
   getBackgroundVerticalPadding() {
-    return Math.max(0, this.cameraMaxUp);
+    return this.renderController.getBackgroundVerticalPadding();
   }
 
   updateMagicAttacks() {
-    this.magicAttacks = this.magicAttacks.filter((attack) => {
-      if (!attack || attack.isConsumed) {
-        return false;
-      }
-
-      if (typeof attack?.update === "function") {
-        attack.update();
-      }
-
-      const levelEndX = this.level?.levelEndX ?? Infinity;
-      const isOutOnRight = attack.x > levelEndX + 120;
-      const isOutOnLeft = attack.x + attack.width < -120;
-      return !isOutOnRight && !isOutOnLeft;
-    });
+    this.renderController.updateMagicAttacks();
   }
 
   addMagicAttack(attack) {
-    if (!attack) {
-      return;
-    }
-
-    this.magicAttacks.push(attack);
+    this.renderController.addMagicAttack(attack);
   }
 
   addObjToMap(objects) {
-    objects.forEach((obj) => {
-      this.addToMap(obj);
-    });
+    this.renderController.addObjToMap(objects);
   }
 
   addToMap(drawableObject) {
-    if (!drawableObject?.img) {
-      return;
-    }
-
-    const isMirrored = this.mirrorObjectIfNeeded(drawableObject);
-    if (drawableObject.img.complete && drawableObject.img.naturalWidth > 0) {
-      drawableObject.draw(this.ctx);
-      if (typeof drawableObject.drawBoundingBox === "function") {
-        drawableObject.drawBoundingBox(this.ctx);
-      }
-    } else {
-      drawableObject.img.onload = () => {
-        if (drawableObject.img.naturalWidth > 0) {
-          this.ctx.drawImage(
-            drawableObject.img,
-            drawableObject.x,
-            drawableObject.y,
-            drawableObject.width,
-            drawableObject.height,
-          );
-        }
-      };
-      drawableObject.img.onerror = () =>
-        console.error("Movable object image failed to load.");
-    }
-    if (isMirrored) {
-      this.ctx.restore();
-    }
+    this.renderController.addToMap(drawableObject);
   }
 
   mirrorObjectIfNeeded(movableObject) {
-    if (!movableObject.otherDirection) {
-      return false;
-    }
+    return this.renderController.mirrorObjectIfNeeded(movableObject);
+  }
 
-    this.ctx.save();
-    this.ctx.translate(movableObject.x + movableObject.width / 2, 0);
-    this.ctx.scale(-1, 1);
-    this.ctx.translate(-movableObject.x - movableObject.width / 2, 0);
-    return true;
+  handlePauseToggle() {
+    if (this.pause) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
   }
 
   pauseGame() {
     this.pause = true;
+  }
+
+  resumeGame() {
+    this.pause = false;
+    this.draw();
   }
 
   handleGameOver() {
@@ -385,13 +204,11 @@ export default class World {
   }
 
   playGameOverUi() {
-    const gameOver = GameOver.create();
-    this.playOverlayDialog(gameOver, (action) => this.handleGameOverAction(action));
+    this.overlayController.playGameOverUi();
   }
 
   playWinUi() {
-    const win = Win.create();
-    this.playOverlayDialog(win, (action) => this.handleWinAction(action));
+    this.overlayController.playWinUi();
   }
 
   handleEnemyDefeat(enemy) {
@@ -425,120 +242,6 @@ export default class World {
     }
 
     return enemy.constructor.name.toLowerCase() === expectedType.toLowerCase();
-  }
-
-  playOverlayDialog(dialog, onActionCallback) {
-    const uiState = { isActive: true };
-
-    const render = () => this.renderOverlayDialog(dialog, uiState);
-    this.preloadDialogImages(dialog, render);
-
-    const handlers = {
-      onMouseMove: (e) => this.handleDialogMouseMove(e, dialog, render),
-      onMouseLeave: () => this.handleDialogMouseLeave(dialog, render),
-      onMouseDown: (e) => this.handleDialogMouseDown(e, dialog, render),
-      onMouseUp: (e) => this.handleDialogMouseUp(e, dialog, render),
-      onClick: (e) => this.handleDialogClick(e, dialog, () => cleanup(), onActionCallback),
-    };
-
-    const cleanup = () => this.cleanupOverlayDialog(uiState, handlers);
-    this.bindDialogEvents(handlers);
-  }
-
-  renderOverlayDialog(dialog, uiState) {
-    if (!uiState.isActive) {
-      return;
-    }
-    dialog.draw(this.ctx);
-  }
-
-  preloadDialogImages(dialog, onReady) {
-    let loaded = 0;
-    const onLoad = () => {
-      loaded += 1;
-      if (loaded >= 2) {
-        onReady();
-      }
-    };
-
-    dialog.panelImg.complete ? onLoad() : (dialog.panelImg.onload = onLoad);
-    dialog.buttonSheet.complete ? onLoad() : (dialog.buttonSheet.onload = onLoad);
-  }
-
-  bindDialogEvents(handlers) {
-    this.canvas.addEventListener("mousemove", handlers.onMouseMove);
-    this.canvas.addEventListener("mouseleave", handlers.onMouseLeave);
-    this.canvas.addEventListener("mousedown", handlers.onMouseDown);
-    this.canvas.addEventListener("mouseup", handlers.onMouseUp);
-    this.canvas.addEventListener("click", handlers.onClick);
-  }
-
-  cleanupOverlayDialog(uiState, handlers) {
-    uiState.isActive = false;
-    this.canvas.style.cursor = "default";
-    this.canvas.removeEventListener("mousemove", handlers.onMouseMove);
-    this.canvas.removeEventListener("mouseleave", handlers.onMouseLeave);
-    this.canvas.removeEventListener("mousedown", handlers.onMouseDown);
-    this.canvas.removeEventListener("mouseup", handlers.onMouseUp);
-    this.canvas.removeEventListener("click", handlers.onClick);
-  }
-
-  getCanvasMousePos(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
-  }
-
-  handleDialogMouseMove(e, dialog, render) {
-    const { x, y } = this.getCanvasMousePos(e);
-    const hoveredButton = dialog.getClickedButton(x, y);
-    dialog.setHoveredButton(hoveredButton?.action ?? null);
-
-    if (!hoveredButton) {
-      dialog.setPressedButton(null);
-    }
-
-    this.canvas.style.cursor = hoveredButton ? "pointer" : "default";
-    render();
-  }
-
-  handleDialogMouseLeave(dialog, render) {
-    dialog.setHoveredButton(null);
-    dialog.setPressedButton(null);
-    this.canvas.style.cursor = "default";
-    render();
-  }
-
-  handleDialogMouseDown(e, dialog, render) {
-    const { x, y } = this.getCanvasMousePos(e);
-    const pressedButton = dialog.getClickedButton(x, y);
-    dialog.setPressedButton(pressedButton?.action ?? null);
-    render();
-  }
-
-  handleDialogMouseUp(e, dialog, render) {
-    const { x, y } = this.getCanvasMousePos(e);
-    const hoveredButton = dialog.getClickedButton(x, y);
-    dialog.setHoveredButton(hoveredButton?.action ?? null);
-    dialog.setPressedButton(null);
-    render();
-  }
-
-  handleDialogClick(e, dialog, cleanup, onActionCallback) {
-    const { x, y } = this.getCanvasMousePos(e);
-    const btn = dialog.getClickedButton(x, y);
-
-    if (!btn) {
-      return;
-    }
-
-    cleanup();
-    onActionCallback(btn.action);
   }
 
   handleGameOverAction(action) {
