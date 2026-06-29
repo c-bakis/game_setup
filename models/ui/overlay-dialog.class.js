@@ -15,8 +15,8 @@ export default class OverlayDialog extends DrawableObject {
         this.panelSrc = config.panelSrc;      // { sx, sy, sw, sh }
         this.panelDst = config.panelDst || { x: 175, y: 120, w: 350, h: 285 };
         this.buttons = config.buttons || [];
-        this.panelImg = new Image();
-        this.panelImg.src = "img/gui/Win_loose.png";
+        this.panelImg = config.panelImg || new Image();
+        this.panelImg.src = config.panelImgSrc || "img/gui/Win_loose.png";
         this.buttonSheet = new Image();
         this.buttonSheet.src = "img/gui/Buttons.png";
     }
@@ -46,7 +46,7 @@ export default class OverlayDialog extends DrawableObject {
 
         // Text label on top of the button
         ctx.save();
-        ctx.font = "bold 11px monospace";
+        ctx.font = "bold 12px monospace";
         ctx.fillStyle = "#1a3d1a";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";

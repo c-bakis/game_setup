@@ -21,6 +21,8 @@ export default class Win {
                     x: 380, y: 300, w: 110, h: 30,
                 },
             ],
+            panelImg: new Image(),
+            panelImgSrc: "img/gui/Win_loose.png",
         });
     }
 }

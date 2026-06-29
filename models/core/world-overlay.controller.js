@@ -1,19 +1,29 @@
+import PauseMenu from "../ui/pause-menu.class.js";
 import GameOver from "../ui/game-over.class.js";
 import Win from "../ui/win.class.js";
 
+import MenuActionsController from "./menu-actions.controller.js";
+
 export default class WorldOverlayController {
+
   constructor(world) {
     this.world = world;
+    this.menuActionsController = new MenuActionsController();
+  }
+
+  playPauseMenuUi() {
+    const pauseMenu = PauseMenu.create();
+    this.playOverlayDialog(pauseMenu, (action) => this.menuActionsController.handlePauseMenuAction(action));
   }
 
   playGameOverUi() {
     const gameOver = GameOver.create();
-    this.playOverlayDialog(gameOver, (action) => this.world.handleGameOverAction(action));
+    this.playOverlayDialog(gameOver, (action) => this.menuActionsController.handleGameOverAction(action));
   }
 
   playWinUi() {
     const win = Win.create();
-    this.playOverlayDialog(win, (action) => this.world.handleWinAction(action));
+    this.playOverlayDialog(win, (action) => this.menuActionsController.handleWinAction(action));
   }
 
   playOverlayDialog(dialog, onActionCallback) {

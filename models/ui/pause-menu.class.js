@@ -8,19 +8,36 @@ export default class PauseMenu {
     static create() {
         return new OverlayDialog({
             panelSrc: { sx: 90, sy: 0, sw: 90, sh: 176 },
-            panelDst: { x: 200, y: 100, w: 96, h: 210 },
+            panelDst: { x: 280, y: 80, w: 220, h: 310 },
             buttons: [
                 {
-                    label: "PLAY AGAIN",
-                    action: "restart",
-                    x: 260, y: 300, w: 110, h: 30,
+                    label: "RESUME",
+                    action: "resume",
+                    x: 320, y: 145, w: 135, h: 30,
                 },
                 {
-                    label: "MENU",
+                    label: "RESTART",
+                    action: "restart",
+                    x: 320, y: 185, w: 135, h: 30,
+                },
+                {
+                    label: "RETURN TO MENU",
                     action: "menu",
-                    x: 380, y: 300, w: 110, h: 30,
+                    x: 320, y: 225, w: 135, h: 30,
+                },
+                {
+                    label: "MUSIC ON/OFF",
+                    action: "toggleMusic",
+                    x: 320, y: 265, w: 135, h: 30,
+                },
+                {
+                    label: "SOUND ON/OFF",
+                    action: "toggleSound",
+                    x: 320, y: 305, w: 135, h: 30,
                 },
             ],
+            panelImg: new Image(),
+            panelImgSrc: "img/gui/Main_menu.png",
         });
     }
 }

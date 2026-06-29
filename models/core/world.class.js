@@ -12,6 +12,7 @@ import WorldRenderController from "./world-render.controller.js";
 
 export default class World {
   // debugForceGameOverOnLoad = true;
+    // debugForcePauseOnLoad = true;
   backgroundObjects = [];
   tileset = [];
   enemies = [];
@@ -94,9 +95,12 @@ export default class World {
     this.backgroundRenderer = new BackgroundRenderer(this);
     this.tileset = this.plattformGroundResolver.fillTilesAcrossGround();
     this.draw();
-    // if (this.debugForceGameOverOnLoad) {
-    //   this.handleGameOver();
-    // }
+    if (this.debugForceGameOverOnLoad) {
+      this.handleGameOver();
+    }
+        if (this.debugForcePauseOnLoad) {
+      this.handlePauseToggle();
+    }
   }
 
   
@@ -184,7 +188,14 @@ export default class World {
     if (this.pause) {
       this.resumeGame();
     } else {
-      this.pauseGame();
+      this.pauseGame()
+      this.playPauseMenuUi();
+    }
+  }
+
+  playPauseMenuUi() {
+    if (this.pause) {
+      this.overlayController.playPauseMenuUi();
     }
   }
 
@@ -242,25 +253,5 @@ export default class World {
     }
 
     return enemy.constructor.name.toLowerCase() === expectedType.toLowerCase();
-  }
-
-  handleGameOverAction(action) {
-    if (action === "restart") {
-      console.log("Restart clicked");
-      // TODO: restart the game
-    } else if (action === "menu") {
-      console.log("Menu clicked");
-      // TODO: return to main menu
-    }
-  }
-
-  handleWinAction(action) {
-    if (action === "restart") {
-      console.log("Restart clicked");
-      // TODO: restart the game
-    } else if (action === "menu") {
-      console.log("Menu clicked");
-      // TODO: return to main menu
-    }
   }
 }
